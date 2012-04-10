@@ -1,0 +1,39 @@
+
+Redisfs Snapshots
+-----------------
+
+In brief the way that redisfs works is by storing all files, their
+contents, and the appropriate meta-data in a series of Redis keys.
+
+Each of these keys has a prefix, which allows for a number of
+different filesystems to be mounted against a single (& potentially
+remote) redis-server.
+
+The prefix, by default, is "skx:", but this may be changed via the
+--prefix argument to redisfs.
+
+Once you've populated a filesystem the redis-server will have keys
+with names such as:
+
+  skx:INODE:1:MTIME
+  skx:INODE:3:MTIME
+  skx:INODE:1:TYPE
+  skx:INODE:3:NAME
+  skx:INODE:3:MODE
+  skx:INODE:1:GID
+  skx:INODE:2:GID
+
+To create a snapshot we merely copy all keys which have the "skx:" prefix
+to another name:
+
+  snapshot:INODE:1:MTIME
+  snapshot:INODE:3:MTIME
+  snapshot:INODE:1:TYPE
+  ..
+
+This can then be mounted, using the prefix explicitly:
+
+   redisfs --prefix=snapshot:
+
+Steve
+--

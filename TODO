@@ -1,0 +1,9 @@
+  *  Performance could be improved by either batching up operations, or
+    going ASYNC.  (Caveat: We use a global mutex because FUSE doesn't play
+    so well with ASYNC stuffs.  Investigate.)
+
+  *  Break out the code in src/ into FUSE-specific & REDIS-Specific parts.
+     Add matching test cases.
+
+Steve
+--

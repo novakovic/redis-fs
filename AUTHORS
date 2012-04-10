@@ -1,0 +1,15 @@
+
+Primary Author
+--------------
+
+  Steve Kemp <steve [at] steve.org.uk>
+
+Contributions
+-------------
+
+  Listed alphabetically by surname.
+
+  Ben Sykes <benpsykes [at] gmail.com>
+   - Several significant speedups, via queued writes to redis
+     and the use of better primitives.
+

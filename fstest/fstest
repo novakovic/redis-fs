@@ -1,0 +1,320 @@
+#!/usr/bin/perl -w
+#
+#  Simple script to stress-test the filesystem.
+#
+# Steve
+# --
+#
+
+
+use strict;
+use warnings;
+use File::Copy;
+use File::Path;
+use Getopt::Long;
+
+#
+#  Flush output
+#
+local $| = 1;
+
+#
+#  Command lines arguments
+#
+my %CONFIG;
+
+#
+#  Parse command line options
+#
+exit
+  if (
+      !GetOptions( "force", \$CONFIG{ 'force' }, "fast", \$CONFIG{ 'fast' } ) );
+
+
+#
+#  Given that this test code is destructive we need to prompt the user
+# unless "--force" was given.
+#
+if ( !$CONFIG{ 'force' } )
+{
+
+    #
+    #  Otherwise prompt for confirmation
+    #
+    print "[Running './fstest --force' will skip this prompt]\n\n";
+    print
+      "This test will remove all keys from the redis-server, proceed [Y/N]?\n";
+
+    my $ok = 0;
+
+    while ( !$ok and ( my $line = <STDIN> ) )
+    {
+        chomp($line);
+        $ok = 1 if ( $line =~ /y/i );
+        exit if ( $line =~ /n/i );
+    }
+}
+
+
+#
+#  See if we're mounted
+#
+if ( !mounted() )
+{
+    print "redisfs doesn't seem to be mounted at /mnt/redis\n";
+    exit(1);
+}
+
+
+
+
+#
+#  Start test
+#
+system("redis-cli flushdb 2>/dev/null >/dev/null");
+
+
+#
+#  Count the keys stored in redis.
+#
+countKeys(1);
+
+
+#
+#  Number of random files to create.
+#
+my $fc = 1000;
+$fc = 100 if ( $CONFIG{ 'fast' } );
+
+#
+#  Create some random files.
+#
+print "\n";
+for ( my $i = 0 ; $i < $fc ; $i++ )
+{
+    print "\rCreating random file $i/$fc      ";
+    createRandomFile("/mnt/redis/$i");
+}
+print "\r\n";
+
+
+#
+#  Remove all files.
+#
+my $found = 0;
+foreach my $file ( sort( glob("/mnt/redis/*") ) )
+{
+    print "\rRemoving file: $file    ";
+    unlink($file) if ( -e $file );
+    $found += 1;
+}
+print "\r\n";
+
+
+#
+#  Ensure we removed the number of files we expected to.
+#
+if ( $found != $fc )
+{
+    print "Failed to unlink the number of files we should have created.\n";
+    print "Expected $fc - found $found\n";
+    exit 1;
+}
+
+print "\r\n";
+
+#
+#  The number of keys in our database should still be one.
+#
+countKeys(1);
+
+
+#
+#  Speed tests
+#
+unless ( $CONFIG{ 'fast' } )
+{
+    print "\nSpeed test - Output: 500Mb\n";
+    system("dd if=/dev/zero of=/mnt/redis/zero bs=1024k count=512");
+
+    print "Speed test - Input: 500Mb\n";
+    system("dd if=/mnt/redis/zero of=/dev/zero bs=1024k count=512");
+
+    #
+    #  Remove the that temporary file.
+    #
+    unlink("/mnt/redis/zero");
+
+    #
+    #  The number of keys in our database should still be one.
+    #
+    countKeys(1);
+}
+
+
+
+#
+#  Make a directory and copy a file into it.
+#
+print "\nTesting directory renaming\n";
+File::Path::make_path( "/mnt/redis/foo/bar/baz", { verbose => 0 } );
+File::Copy::copy( "/etc/passwd", "/mnt/redis/foo/bar/baz/passwd.new" );
+
+#
+#  Copy the attributes of the new file.
+#
+my @orig = stat("/mnt/redis/foo/bar/baz/passwd.new");
+
+#
+#  Rename the directory.
+#
+File::Copy::move( "/mnt/redis/foo/bar", "/mnt/redis/foo/steve" );
+
+if ( !-e "/mnt/redis/foo/steve/baz/passwd.new" )
+{
+    print "Error: After renaming a parent an expected entry isn't present!\n";
+    exit 1;
+}
+else
+{
+    print
+      "OK: After renaming a parent directory a file is still where it should be.\n";
+}
+
+my @new = stat("/mnt/redis/foo/steve/baz/passwd.new");
+
+my $i = $#orig;
+
+while ($i)
+{
+    my $orig = $orig[$i];
+    my $new  = $new[$i];
+
+    if ( $new eq $orig )
+    {
+        print "\tOK: Attribute check post-move: $new eq $orig\n";
+    }
+    $i -= 1;
+}
+
+#
+#  Remove the temporary directory and ensure we have one key
+#
+system("rm -rf /mnt/redis/foo");
+countKeys(1);
+
+
+#
+#  TODO:  More tests.
+#
+
+
+exit 0;
+
+
+
+
+=begin doc
+
+Count the number of redis keys.
+
+=end doc
+
+=cut
+
+sub countKeys
+{
+    my ($expected) = (@_);
+
+    my $count = 0;
+    open( CMD, "redis-cli keys \*|" ) or
+      die "Failed to run redis-cli : $!";
+    while (<CMD>)
+    {
+        $count += 1;
+    }
+    close(CMD);
+
+    if ( $count <= $expected )
+    {
+        print "OK: Redis has $count keys\n";
+    }
+    else
+    {
+        print "ERR: Redis has $count keys - not $expected.  We've leaked?\n";
+        exit 1;
+    }
+}
+
+
+=begin doc
+
+Given a file write a random number of bytes to that file.
+
+=end doc
+
+=cut
+
+sub createRandomFile
+{
+    my ($path) = (@_);
+
+    open( FILE, ">", $path ) or
+      die "Failed to open $path - $!";
+
+    #
+    #  Random size of the file to create.
+    #
+    my $size = int rand(32768);
+
+    #
+    #  Random characters to write to the file.
+    #
+    my $chars = join( '', map {( 'a' .. 'z' )[rand 26]} 0 .. $size );
+
+    #
+    #  Write to the file.
+    #
+    print FILE $chars;
+    close(FILE);
+
+    #
+    #  Verify the file has the expected size.
+    #
+    my ( $dev,   $ino,   $mode,  $nlink, $uid,     $gid, $rdev,
+         $fsize, $atime, $mtime, $ctime, $blksize, $blocks
+       ) = stat($path);
+    $fsize -= 1;
+
+
+    if ( $size != $fsize )
+    {
+        print
+          "Attempted to write $size bytes to $path - but only $fsize were found\n";
+        exit 1;
+    }
+
+}
+
+
+=begin doc
+
+Is our filesystem mounted?
+
+=end doc
+
+=cut
+
+sub mounted
+{
+    open( FILE, "<", "/proc/mounts" ) or
+      die "Failed to open list of mounts - $!";
+    my $found = 0;
+    foreach my $line (<FILE>)
+    {
+        $found = 1 if ( $line =~ /\/mnt\/redis/ );
+    }
+    close(FILE);
+
+    return ($found);
+}
