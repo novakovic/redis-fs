@@ -62,6 +62,7 @@ if ( !$CONFIG{ 'force' } )
 if ( !mounted() )
 {
     print "redisfs doesn't seem to be mounted at /mnt/redis\n";
+    print "run `redisfs` to mount the FS at /mnt/redis\n";
     exit(1);
 }
 
