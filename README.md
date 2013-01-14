@@ -48,34 +48,39 @@ For each filesystem entry, be it a file, symlink, or a directory, we
 allocate a unique identifier which we called an "INODE number".
 This may be used to store, retrieve, and search for information:
 
-   INODE:1:UID   -> The owner of the inode with ID 1.
-   INODE:1:GID   -> The owner of the inode with ID 1.
-   INODE:1:SIZE  -> The size of the object with inode #1.
-   INODE:1:NAME  -> The name of the object with inode #1.
-   ..
+```
+INODE:1:UID   -> The owner of the inode with ID 1.
+INODE:1:GID   -> The owner of the inode with ID 1.
+INODE:1:SIZE  -> The size of the object with inode #1.
+INODE:1:NAME  -> The name of the object with inode #1.
+```
 
 So we might see this:
 
-   INODE:1:NAME => "foo"
-   INODE:1:MODE => "0755"
-   INODE:1:GID  => "0"
-   INODE:1:UID  => "0"
-   INODE:1:TYPE => "dir"
-   ..
+```
+INODE:1:NAME => "foo"
+INODE:1:MODE => "0755"
+INODE:1:GID  => "0"
+INODE:1:UID  => "0"
+INODE:1:TYPE => "dir"
+```
 
 Similarly the entry for "/README" might look like this:
 
-   INODE:2:NAME => "README"
-   INODE:2:MODE => "0644"
-   INODE:2:GID  => "0"
-   INODE:2:UID  => "0"
-   INODE:2:TYPE => "file"
+```
+INODE:2:NAME => "README"
+INODE:2:MODE => "0644"
+INODE:2:GID  => "0"
+INODE:2:UID  => "0"
+INODE:2:TYPE => "file"
+```
 
 The actual contents of a directory are stored in a set, which has
 a name based upon the inode of the parent directory.  For example:
 
-   SMEMBERS DIRENT:3 -> { "5", "6" }
-
+```
+SMEMBERS DIRENT:3 -> { "5", "6" }
+```
 
 In actual fact we add a prefix to each key and set name, which allows
 multiple filesystems to be mounted at the same time - and which is
@@ -105,7 +110,3 @@ By default this will attempt to connect to a redis server running upon
 the same host - if you wish to connect to a remote machine please execute:
 
      # ./src/redisfs --host remote.example.org [--port=6379]
-
-
-Steve
---
