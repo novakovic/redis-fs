@@ -18,9 +18,9 @@ key=value store isn't such a practical endeavour, but happily redis
 also has several useful abilities built-in, including native support
 for other data-structures including:
 
-  * sets.
-  * hashes.
-  * lists.
+* sets.
+* hashes.
+* lists.
 
 Using only key&value pairs, and the notion of a set, we can implement
 a simple filesystem, which is ready for replication and snapshotting.
@@ -32,8 +32,8 @@ Storage
 
 This filesystem makes use of two of redis's abilities:
 
-  * KEY storage.
-  * SET storage.
+* KEY storage.
+* SET storage.
 
 Our filesystem is built around the notion that a directory contains
 entries, and these entries are members of a set named after the parent
@@ -41,8 +41,8 @@ directory.
 
 For example consider the directory tree which contains two entries:
 
-  /mnt/redis/foo/
-  /mnt/redis/README
+1. /mnt/redis/foo/
+2. /mnt/redis/README
 
 For each filesystem entry, be it a file, symlink, or a directory, we
 allocate a unique identifier which we called an "INODE number".
